@@ -84,21 +84,21 @@ export default function AnalyticsPage() {
 
       // Combine recent activity
       const recentActivity = [
-        ...(recentReferences?.map(ref => ({
+        ...(recentReferences?.map((ref: any) => ({
           id: ref.id,
           type: 'reference' as const,
           title: ref.title,
           platform: ref.platform,
           created_at: ref.created_at
         })) || []),
-        ...(recentAnalyses?.map(analysis => ({
+        ...(recentAnalyses?.map((analysis: any) => ({
           id: analysis.reference_id,
           type: 'analysis' as const,
           title: `Analysis for ${analysis.reference_id}`,
           platform: 'analysis',
           created_at: analysis.created_at
         })) || []),
-        ...(recentGenerations?.map(gen => ({
+        ...(recentGenerations?.map((gen: any) => ({
           id: gen.reference_id,
           type: 'generation' as const,
           title: `Generation ${gen.status} for ${gen.reference_id}`,
