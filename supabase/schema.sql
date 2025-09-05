@@ -23,15 +23,15 @@ CREATE INDEX IF NOT EXISTS content_references_platform_idx ON content_references
 CREATE INDEX IF NOT EXISTS content_references_created_at_idx ON content_references(created_at);
 CREATE INDEX IF NOT EXISTS content_references_viral_score_idx ON content_references(viral_score);
 
--- Create analyses table
+-- Create analyses table (matching PRD specification)
 CREATE TABLE IF NOT EXISTS analyses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   reference_id UUID REFERENCES content_references(id) ON DELETE CASCADE,
-  hooks JSONB DEFAULT '[]',
-  structure JSONB DEFAULT '{}',
-  content_metrics JSONB DEFAULT '{}',
+  hooks JSONB NOT NULL DEFAULT '[]',
+  structure JSONB NOT NULL DEFAULT '{}',
+  reasons JSONB NOT NULL DEFAULT '{}',
+  scores JSONB NOT NULL DEFAULT '{}',
   why_worked TEXT[] DEFAULT '{}',
-  analysis_score DECIMAL(10,2),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -95,9 +95,8 @@ SELECT
     cr.created_at as reference_created_at,
     a.hooks,
     a.structure,
-    a.content_metrics,
+    a.reasons,
     a.why_worked,
-    a.analysis_score,
     a.created_at as analysis_created_at
 FROM content_references cr
 LEFT JOIN analyses a ON cr.id = a.reference_id;

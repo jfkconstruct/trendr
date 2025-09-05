@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase'
-import { analyzeContent } from '@/lib/llm'
+import { getSupabaseAdmin } from '@/lib/supabase/server'
+import { analyzeTranscript } from '@/lib/analyzer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +13,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create supabase instance
+    const supabase = getSupabaseAdmin()
+    
     // Fetch reference from database
-    const { data: reference, error: referenceError } = await supabaseServer
+    const { data: reference, error: referenceError } = await supabase
       .from('content_references')
       .select('*')
       .eq('id', referenceId)
@@ -28,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if analysis already exists
-    const { data: existingAnalysis } = await supabaseServer
+    const { data: existingAnalysis } = await supabase
       .from('analyses')
       .select('*')
       .eq('reference_id', referenceId)
@@ -42,32 +45,27 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Prepare reference for analysis
-    const referenceForAnalysis = {
-      id: reference.id,
-      platform: reference.platform,
-      url: reference.url,
-      title: reference.title,
-      creator: reference.creator,
-      metrics: reference.metrics,
-      transcript: reference.transcript,
-      viralScore: reference.viral_score,
-      thumbnailUrl: reference.thumbnail_url
+    if (!reference.transcript || reference.transcript.length < 20) {
+      return NextResponse.json(
+        { error: 'Transcript missing' },
+        { status: 400 }
+      )
     }
 
-    // Analyze content using LLM
-    const analysis = await analyzeContent(referenceForAnalysis)
+    // Analyze content using the new analyzer library
+    const analysis = await analyzeTranscript(reference, reference.transcript)
 
-    // Save analysis to database
-    const { data: savedAnalysis, error: analysisError } = await supabaseServer
+    // Save analysis to database (matching PRD schema)
+    const { data: savedAnalysis, error: analysisError } = await supabase
       .from('analyses')
       .insert({
         reference_id: referenceId,
         hooks: analysis.hooks,
         structure: analysis.structure,
-        content_metrics: analysis.contentMetrics,
-        why_worked: analysis.whyWorked,
-        analysis_score: analysis.analysisScore
+        reasons: analysis.reasons,
+        scores: analysis.scores,
+        // Convert reasons.bullets to why_worked array as per PRD
+        why_worked: analysis.reasons.bullets
       })
       .select()
       .single()

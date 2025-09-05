@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check-env": "node check-env.mjs",
+    "test-env": "node test-env.js"
   },
   "dependencies": {
     "@radix-ui/react-select": "^2.2.6",

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase/server'
 import { calculateViralScore } from '@/lib/llm'
 import { searchInstagramByHashtag, formatInstagramPost } from '@/lib/instagram'
 import { getTikTokVideoByUrl, formatTikTokVideo } from '@/lib/tiktok'
@@ -181,8 +181,11 @@ async function discoverYouTubeShorts(niche: string) {
     // Return top 20 results
     const topVideos = validVideos.slice(0, 20)
 
+    // Create supabase instance
+    const supabase = getSupabaseAdmin()
+    
     // Save to database
-    const { error: upsertError } = await supabaseServer
+    const { error: upsertError } = await supabase
       .from('content_references')
       .upsert(
         topVideos.map(video => ({
@@ -270,8 +273,11 @@ async function discoverInstagram(niche: string) {
     // Sort by viral score
     processedPosts.sort((a, b) => b.viralScore - a.viralScore)
 
+    // Create supabase instance
+    const supabase = getSupabaseAdmin()
+    
     // Save to database
-    const { error: upsertError } = await supabaseServer
+    const { error: upsertError } = await supabase
       .from('content_references')
       .upsert(
         processedPosts.map(post => ({
@@ -344,8 +350,11 @@ async function discoverTikTok(niche: string) {
         publishedAt: video.publishedAt
       }
 
+      // Create supabase instance
+      const supabase = getSupabaseAdmin()
+      
       // Save to database
-      const { error: upsertError } = await supabaseServer
+      const { error: upsertError } = await supabase
         .from('content_references')
         .upsert({
           id: video.id,
@@ -407,8 +416,11 @@ async function discoverTikTok(niche: string) {
       // Sort by viral score
       processedVideos.sort((a, b) => b.viralScore - a.viralScore)
 
+      // Create supabase instance
+      const supabase = getSupabaseAdmin()
+      
       // Save to database
-      const { error: upsertError } = await supabaseServer
+      const { error: upsertError } = await supabase
         .from('content_references')
         .upsert(
           processedVideos.map(video => ({

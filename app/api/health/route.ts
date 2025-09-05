@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase/server'
 import { checkLLMHealth } from '@/lib/llm-client'
 
 export async function GET() {
   try {
+    // Create supabase instance
+    const supabase = getSupabaseAdmin()
+    
     // Check database connection
-    const { data, error } = await supabaseServer.from('content_references').select('count', { count: 'exact', head: true })
+    const { data, error } = await supabase.from('content_references').select('count', { count: 'exact', head: true })
     
     if (error) {
       return NextResponse.json(

@@ -331,13 +331,19 @@ export default function DiscoverPage() {
                   </Tooltip>
 
                   <Tooltip title="Analyze">
-                    <IconButton size="small" onClick={() => { /* TODO: wire analyzer */ }}>
+                    <IconButton
+                      size="small"
+                      href={`/analytics?reference=${reference.id}`}
+                    >
                       <AnalyticsIcon />
                     </IconButton>
                   </Tooltip>
 
                   <Tooltip title="Generate Content">
-                    <IconButton size="small" onClick={() => { /* TODO: wire generator */ }}>
+                    <IconButton
+                      size="small"
+                      href={`/generate?reference=${reference.id}`}
+                    >
                       <ContentCopyIcon />
                     </IconButton>
                   </Tooltip>

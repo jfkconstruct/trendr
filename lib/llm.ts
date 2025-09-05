@@ -34,15 +34,27 @@ export interface AnalysisResult {
   analysisScore: number;
 }
 
-// Generation interface
+// Enhanced Generation interface
 export interface GenerationOutput {
   script: string;
+  scriptVariants: string[]; // Multiple hook variants
   captions: string;
   hashtags: string[];
   beats: Array<{ t: number; beat: string }>;
-  broll: Array<{ t: number; cue: string }>;
+  beatSheet: Array<{ 
+    t: number; 
+    beat: string; 
+    type: 'hook' | 'setup' | 'proof' | 'payoff' | 'cta' | 'transition' 
+  }>;
+  broll: Array<{ 
+    t: number; 
+    cue: string; 
+    shotType?: string; 
+    keywords?: string[] 
+  }>;
   thumbnailBrief: string;
   subtitles: string;
+  voScript?: string; // Voice-over script for 11Labs
 }
 
 // Offer interface
@@ -108,7 +120,7 @@ Constraints:
 `;
 }
 
-// Generation prompt
+// Enhanced Generation prompt
 export function createGenerationPrompt(
   platform: 'youtube' | 'instagram' | 'tiktok',
   reference: Reference,
@@ -133,21 +145,29 @@ Offer: Problem: ${offer.problem}, Promise: ${offer.promise}, Proof: ${offer.proo
 GUIDELINES:
 ${platformHints[platform]}
 
-TASK: Generate platform-native content pack based on successful patterns and offer integration.
+TASK: Generate comprehensive platform-native content pack based on successful patterns and offer integration.
 
 Return JSON with:
-- script: complete script with [TEXT: cues]
+- script: complete primary script with [TEXT: cues]
+- script_variants: array of 3-5 alternative hook variants
 - captions: 1-2 sentences ending with CTA
 - hashtags: array of 4-8 niche-specific tags
 - beats: array of {t, beat} for timeline
-- broll: array of {t, cue} for visual elements
-- thumbnail_brief: concrete visual guidance
+- beat_sheet: detailed beat sheet with types (hook, setup, proof, payoff, cta, transition)
+- broll: array of {t, cue, shot_type?, keywords?} for visual elements
+- thumbnail_brief: concrete visual guidance with composition details
 - subtitles: valid SRT format
+- vo_script: voice-over script for 11Labs (if applicable)
 
 Constraints:
 - Script: Hook → Setup → Proof → Payoff → CTA
 - Keep it engaging and platform-optimized
 - Include specific CTAs and value propositions
+- Generate multiple hook variants for flexibility
+- Include detailed beat sheet with timing and types
+- Provide shot type and keyword information for b-roll
+- Create thumbnail brief with concrete visual guidance
+- Generate subtitles in proper SRT format
 `;
 }
 
@@ -199,8 +219,8 @@ export async function generateContent(
     // Parse and validate the response
     const parsed = JSON.parse(response)
     
-    // Validate required fields
-    const requiredFields = ['script', 'captions', 'hashtags', 'beats', 'broll', 'thumbnailBrief', 'subtitles']
+    // Validate all required fields including new ones
+    const requiredFields = ['script', 'script_variants', 'captions', 'hashtags', 'beats', 'beat_sheet', 'broll', 'thumbnail_brief', 'subtitles']
     for (const field of requiredFields) {
       if (!parsed[field]) {
         throw new Error(`Missing required field: ${field}`)
@@ -209,12 +229,15 @@ export async function generateContent(
     
     return {
       script: parsed.script,
+      scriptVariants: parsed.script_variants || [],
       captions: parsed.captions,
       hashtags: parsed.hashtags,
       beats: parsed.beats,
+      beatSheet: parsed.beat_sheet || [],
       broll: parsed.broll,
-      thumbnailBrief: parsed.thumbnailBrief,
-      subtitles: parsed.subtitles
+      thumbnailBrief: parsed.thumbnail_brief,
+      subtitles: parsed.subtitles,
+      voScript: parsed.vo_script
     }
   } catch (error) {
     console.error('Generation failed:', error)

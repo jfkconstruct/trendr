@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase/server'
 import { generateContent } from '@/lib/llm'
 
 export async function POST(request: NextRequest) {
   try {
-    const { referenceId, offer, platform } = await request.json()
+    const { referenceId, offer, platform, projectId, offerId } = await request.json()
 
-    if (!referenceId || !offer || !platform) {
+    if (!referenceId || !platform || !projectId) {
       return NextResponse.json(
-        { error: 'Reference ID, offer, and platform are required' },
+        { error: 'Reference ID, platform, and project ID are required' },
         { status: 400 }
       )
     }
@@ -22,8 +22,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create supabase instance
+    const supabase = getSupabaseAdmin()
+    
     // Fetch reference from database
-    const { data: reference, error: referenceError } = await supabaseServer
+    const { data: reference, error: referenceError } = await supabase
       .from('content_references')
       .select('*')
       .eq('id', referenceId)
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch analysis if available
-    const { data: analysis } = await supabaseServer
+    const { data: analysis } = await supabase
       .from('analyses')
       .select('*')
       .eq('reference_id', referenceId)
@@ -56,12 +59,31 @@ export async function POST(request: NextRequest) {
       thumbnailUrl: reference.thumbnail_url
     }
 
+    // Fetch offer profile if offerId is provided
+    let effectiveOffer = offer
+    if (offerId) {
+      const { data: offerProfile, error: offerError } = await supabase
+        .from('offer_profiles')
+        .select('*')
+        .eq('id', offerId)
+        .single()
+      
+      if (!offerError && offerProfile) {
+        effectiveOffer = {
+          problem: offerProfile.problem,
+          promise: offerProfile.promise,
+          proof: offerProfile.proof,
+          pitch: offerProfile.pitch
+        }
+      }
+    }
+
     // Create generation job
-    const { data: generationJob, error: jobError } = await supabaseServer
+    const { data: generationJob, error: jobError } = await supabase
       .from('generation_jobs')
       .insert({
         reference_id: referenceId,
-        offer,
+        offer: effectiveOffer,
         status: 'pending'
       })
       .select()
@@ -76,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update job status to processing
-    await supabaseServer
+    await supabase
       .from('generation_jobs')
       .update({ status: 'processing' })
       .eq('id', generationJob.id)
@@ -86,23 +108,40 @@ export async function POST(request: NextRequest) {
       const generatedContent = await generateContent(
         platform as 'youtube' | 'instagram' | 'tiktok',
         referenceForGeneration,
-        offer
+        effectiveOffer
       )
 
+      // Save to packs table
+      const { data: pack, error: packError } = await supabase
+        .from('packs')
+        .insert({
+          project_id: projectId,
+          reference_id: referenceId,
+          offer_id: offerId,
+          platform,
+          contents: generatedContent
+        })
+        .select()
+        .single()
+
+      if (packError) {
+        throw packError
+      }
+
       // Update generation job with results
-      const { data: updatedJob } = await supabaseServer
+      await supabase
         .from('generation_jobs')
         .update({
           outputs: generatedContent,
-          status: 'completed'
+          status: 'completed',
+          pack_id: pack.id
         })
         .eq('id', generationJob.id)
-        .select()
-        .single()
 
       return NextResponse.json({
         success: true,
         jobId: generationJob.id,
+        packId: pack.id,
         outputs: generatedContent,
         message: 'Content generation completed successfully'
       })
@@ -111,7 +150,7 @@ export async function POST(request: NextRequest) {
       console.error('Content generation error:', generationError)
       
       // Update job status to failed
-      await supabaseServer
+      await supabase
         .from('generation_jobs')
         .update({
           status: 'failed',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,8 +8,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = parseInt(searchParams.get('offset') || '0')
 
+    // Create supabase instance
+    const supabase = getSupabaseAdmin()
+    
     // Build query
-    let query = supabaseServer
+    let query = supabase
       .from('content_references')
       .select('*')
       .order('viral_score', { ascending: false })
@@ -32,8 +35,8 @@ export async function GET(request: NextRequest) {
 
     // Enrich with analysis data if available
     const enrichedReferences = await Promise.all(
-      (data || []).map(async (reference) => {
-        const { data: analysis } = await supabaseServer
+      (data || []).map(async (reference: any) => {
+        const { data: analysis } = await supabase
           .from('analyses')
           .select('*')
           .eq('reference_id', reference.id)
@@ -87,8 +90,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Create supabase instance
+    const supabase = getSupabaseAdmin()
+    
     // Insert reference
-    const { data, error } = await supabaseServer
+    const { data, error } = await supabase
       .from('content_references')
       .insert(referenceData)
       .select()

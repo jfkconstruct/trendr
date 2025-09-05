@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { 
   Box, 
-  Grid, 
   Card, 
   CardContent, 
   Typography, 
@@ -51,23 +50,22 @@ interface Reference {
   analysis?: {
     hooks: Array<{
       type: string
-      timestamp: number
-      text: string
+      line?: string
     }>
     structure: {
-      pacing: 'fast' | 'medium' | 'slow'
-      segments: Array<{
-        type: string
-        start: number
-        end: number
+      stages: Array<{
+        name: string
+        t?: number
       }>
     }
-    contentMetrics: {
-      duration: number
-      textDensity: number
-      hookTiming: number
+    reasons: {
+      bullets: string[]
+      evidence?: string[]
     }
-    whyWorked: string[]
+    scores: {
+      hook_clarity?: number
+      pacing?: number
+    }
   }
 }
 
@@ -208,109 +206,107 @@ export default function LibraryPage() {
           {filteredReferences.length} of {references.length} references
         </Typography>
 
-        <Grid container spacing={3}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 3 }}>
           {filteredReferences.map((reference) => (
-            <Grid xs={12} md={6} lg={4} key={reference.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flexGrow: 1 }}>
-                  {/* Thumbnail */}
-                  {reference.thumbnailUrl && (
-                    <Box
-                      component="img"
-                      src={reference.thumbnailUrl}
-                      alt={reference.title}
-                      sx={{
-                        width: '100%',
-                        height: 120,
-                        objectFit: 'cover',
-                        borderRadius: 1,
-                        mb: 2
-                      }}
-                    />
-                  )}
-                  
-                  {/* Platform Badge */}
-                  <Chip
-                    label={reference.platform.toUpperCase()}
-                    size="small"
-                    color={getPlatformColor(reference.platform)}
-                    sx={{ mb: 1 }}
+            <Card key={reference.id} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                {/* Thumbnail */}
+                {reference.thumbnailUrl && (
+                  <Box
+                    component="img"
+                    src={reference.thumbnailUrl}
+                    alt={reference.title}
+                    sx={{
+                      width: '100%',
+                      height: 120,
+                      objectFit: 'cover',
+                      borderRadius: 1,
+                      mb: 2
+                    }}
                   />
-                  
-                  {/* Title */}
-                  <Typography variant="h6" gutterBottom noWrap>
-                    {reference.title}
-                  </Typography>
-                  
-                  {/* Creator */}
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    by {reference.creator}
-                  </Typography>
-                  
-                  {/* Metrics */}
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Views: {formatNumber(reference.metrics.views)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Engagement: {reference.metrics.engagementRate.toFixed(1)}%
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Duration: {formatTime(reference.metrics.duration)}
-                    </Typography>
-                  </Box>
-                  
-                  {/* Viral Score */}
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Viral Score:
-                    </Typography>
-                    <Typography variant="h6" color="primary">
-                      {reference.viralScore.toFixed(1)}/100
-                    </Typography>
-                  </Box>
-                  
-                  {/* Analysis Status */}
-                  {reference.analysis && (
-                    <Box sx={{ mb: 2 }}>
-                      <Chip
-                        label="Analyzed"
-                        color="success"
-                        size="small"
-                        icon={<AnalyticsIcon />}
-                      />
-                    </Box>
-                  )}
-                </CardContent>
+                )}
                 
-                {/* Actions */}
-                <Box sx={{ p: 2, pt: 0, display: 'flex', gap: 1 }}>
-                  <Tooltip title="View">
-                    <IconButton size="small" href={reference.url} target="_blank">
-                      <VisibilityIcon />
-                    </IconButton>
-                  </Tooltip>
-                  
-                  <Tooltip title="View Analysis">
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleViewAnalysis(reference)}
-                      disabled={!reference.analysis}
-                    >
-                      <AnalyticsIcon />
-                    </IconButton>
-                  </Tooltip>
-                  
-                  <Tooltip title="Generate Content">
-                    <IconButton size="small" onClick={() => handleGenerateContent(reference)}>
-                      <ContentCopyIcon />
-                    </IconButton>
-                  </Tooltip>
+                {/* Platform Badge */}
+                <Chip
+                  label={reference.platform.toUpperCase()}
+                  size="small"
+                  color={getPlatformColor(reference.platform)}
+                  sx={{ mb: 1 }}
+                />
+                
+                {/* Title */}
+                <Typography variant="h6" gutterBottom noWrap>
+                  {reference.title}
+                </Typography>
+                
+                {/* Creator */}
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  by {reference.creator}
+                </Typography>
+                
+                {/* Metrics */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Views: {formatNumber(reference.metrics.views)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Engagement: {reference.metrics.engagementRate.toFixed(1)}%
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Duration: {formatTime(reference.metrics.duration)}
+                  </Typography>
                 </Box>
-              </Card>
-            </Grid>
+                
+                {/* Viral Score */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Viral Score:
+                  </Typography>
+                  <Typography variant="h6" color="primary">
+                    {reference.viralScore.toFixed(1)}/100
+                  </Typography>
+                </Box>
+                
+                {/* Analysis Status */}
+                {reference.analysis && (
+                  <Box sx={{ mb: 2 }}>
+                    <Chip
+                      label="Analyzed"
+                      color="success"
+                      size="small"
+                      icon={<AnalyticsIcon />}
+                    />
+                  </Box>
+                )}
+              </CardContent>
+              
+              {/* Actions */}
+              <Box sx={{ p: 2, pt: 0, display: 'flex', gap: 1 }}>
+                <Tooltip title="View">
+                  <IconButton size="small" href={reference.url} target="_blank">
+                    <VisibilityIcon />
+                  </IconButton>
+                </Tooltip>
+                
+                <Tooltip title="View Analysis">
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleViewAnalysis(reference)}
+                    disabled={!reference.analysis}
+                  >
+                    <AnalyticsIcon />
+                  </IconButton>
+                </Tooltip>
+                
+                <Tooltip title="Generate Content">
+                  <IconButton size="small" onClick={() => handleGenerateContent(reference)}>
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Card>
           ))}
-        </Grid>
+        </Box>
 
         {/* Loading State */}
         {loading && (
@@ -351,7 +347,7 @@ export default function LibraryPage() {
                     Why It Worked
                   </Typography>
                   <ul>
-                    {selectedReference.analysis.whyWorked.map((reason, index) => (
+                    {selectedReference.analysis.reasons.bullets.map((reason, index) => (
                       <li key={index} style={{ marginBottom: '8px' }}>
                         <Typography variant="body2">{reason}</Typography>
                       </li>
@@ -367,9 +363,9 @@ export default function LibraryPage() {
                   {selectedReference.analysis.hooks.map((hook, index) => (
                     <Box key={index} mb={2}>
                       <Typography variant="body2" color="text.secondary">
-                        {formatTime(hook.timestamp)} - {hook.type}
+                        {hook.line}
                       </Typography>
-                      <Typography variant="body1">{hook.text}</Typography>
+                      <Typography variant="body1">{hook.type}</Typography>
                     </Box>
                   ))}
                 </Box>
@@ -380,13 +376,7 @@ export default function LibraryPage() {
                     Content Structure
                   </Typography>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Pacing: {selectedReference.analysis.structure.pacing}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Duration: {formatTime(selectedReference.analysis.contentMetrics.duration)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Text Density: {selectedReference.analysis.contentMetrics.textDensity.toFixed(2)}
+                    Stages: {selectedReference.analysis.structure.stages.map(s => s.name).join(', ')}
                   </Typography>
                 </Box>
               </Box>
