@@ -44,80 +44,110 @@ export default function AnalyticsPage() {
         return
       }
 
-      // Fetch total counts
-      const [{ count: totalReferences }, { count: totalAnalyses }, { count: totalGenerations }] = await Promise.all([
-        supabaseClient.from('content_references').select('*', { count: 'exact', head: true }),
-        supabaseClient.from('analyses').select('*', { count: 'exact', head: true }),
-        supabaseClient.from('generation_jobs').select('*', { count: 'exact', head: true })
-      ])
-
-      // Fetch platform statistics
-      const { data: platformData } = await supabaseClient
-        .from('content_references')
-        .select('platform')
-        .eq('platform', 'youtube')
-
-      const platformStats = {
-        youtube: platformData?.length || 0,
-        instagram: 0, // Will be implemented when Instagram is added
-        tiktok: 0     // Will be implemented when TikTok is added
+      // Fetch total counts with error handling
+      const fetchCounts = async () => {
+        try {
+          const [{ count: totalReferences }, { count: totalAnalyses }, { count: totalGenerations }] = await Promise.all([
+            supabaseClient.from('content_references').select('*', { count: 'exact', head: true }),
+            supabaseClient.from('analyses').select('*', { count: 'exact', head: true }),
+            supabaseClient.from('generation_jobs').select('*', { count: 'exact', head: true })
+          ])
+          return { totalReferences, totalAnalyses, totalGenerations }
+        } catch (countErr) {
+          console.error('Error fetching counts:', countErr)
+          throw new Error('Failed to fetch analytics data - database connection issue')
+        }
       }
 
-      // Fetch recent activity
-      const { data: recentReferences } = await supabaseClient
-        .from('content_references')
-        .select('id, title, platform, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5)
+      // Fetch platform statistics with error handling
+      const fetchPlatformStats = async () => {
+        try {
+          const { data: platformData } = await supabaseClient
+            .from('content_references')
+            .select('platform')
+            .eq('platform', 'youtube')
+          return {
+            youtube: platformData?.length || 0,
+            instagram: 0, // Will be implemented when Instagram is added
+            tiktok: 0     // Will be implemented when TikTok is added
+          }
+        } catch (platformErr) {
+          console.error('Error fetching platform stats:', platformErr)
+          return { youtube: 0, instagram: 0, tiktok: 0 }
+        }
+      }
 
-      const { data: recentAnalyses } = await supabaseClient
-        .from('analyses')
-        .select('id, reference_id, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5)
+      // Fetch recent activity with error handling
+      const fetchRecentActivity = async () => {
+        try {
+          const { data: recentReferences } = await supabaseClient
+            .from('content_references')
+            .select('id, title, platform, created_at')
+            .order('created_at', { ascending: false })
+            .limit(5)
 
-      const { data: recentGenerations } = await supabaseClient
-        .from('generation_jobs')
-        .select('id, reference_id, status, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5)
+          const { data: recentAnalyses } = await supabaseClient
+            .from('analyses')
+            .select('id, reference_id, created_at')
+            .order('created_at', { ascending: false })
+            .limit(5)
 
-      // Combine recent activity
-      const recentActivity = [
-        ...(recentReferences?.map((ref: any) => ({
-          id: ref.id,
-          type: 'reference' as const,
-          title: ref.title,
-          platform: ref.platform,
-          created_at: ref.created_at
-        })) || []),
-        ...(recentAnalyses?.map((analysis: any) => ({
-          id: analysis.reference_id,
-          type: 'analysis' as const,
-          title: `Analysis for ${analysis.reference_id}`,
-          platform: 'analysis',
-          created_at: analysis.created_at
-        })) || []),
-        ...(recentGenerations?.map((gen: any) => ({
-          id: gen.reference_id,
-          type: 'generation' as const,
-          title: `Generation ${gen.status} for ${gen.reference_id}`,
-          platform: 'generation',
-          created_at: gen.created_at
-        })) || [])
-      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
+          const { data: recentGenerations } = await supabaseClient
+            .from('generation_jobs')
+            .select('id, reference_id, status, created_at')
+            .order('created_at', { ascending: false })
+            .limit(5)
+
+          // Combine recent activity
+          const recentActivity = [
+            ...(recentReferences?.map((ref: any) => ({
+              id: ref.id,
+              type: 'reference' as const,
+              title: ref.title,
+              platform: ref.platform,
+              created_at: ref.created_at
+            })) || []),
+            ...(recentAnalyses?.map((analysis: any) => ({
+              id: analysis.reference_id,
+              type: 'analysis' as const,
+              title: `Analysis for ${analysis.reference_id}`,
+              platform: 'analysis',
+              created_at: analysis.created_at
+            })) || []),
+            ...(recentGenerations?.map((gen: any) => ({
+              id: gen.reference_id,
+              type: 'generation' as const,
+              title: `Generation ${gen.status} for ${gen.reference_id}`,
+              platform: 'generation',
+              created_at: gen.created_at
+            })) || [])
+          ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10)
+          
+          return recentActivity
+        } catch (activityErr) {
+          console.error('Error fetching recent activity:', activityErr)
+          return []
+        }
+      }
+
+      // Execute all fetch operations
+      const [counts, platformStats, recentActivity] = await Promise.all([
+        fetchCounts(),
+        fetchPlatformStats(),
+        fetchRecentActivity()
+      ])
 
       setData({
-        totalReferences: totalReferences || 0,
-        totalAnalyses: totalAnalyses || 0,
-        totalGenerations: totalGenerations || 0,
+        totalReferences: counts.totalReferences || 0,
+        totalAnalyses: counts.totalAnalyses || 0,
+        totalGenerations: counts.totalGenerations || 0,
         platformStats,
         recentActivity
       })
 
     } catch (err) {
       console.error('Error fetching analytics:', err)
-      setError('Failed to load analytics data')
+      setError('Failed to load analytics data - please check your database connection')
     } finally {
       setLoading(false)
     }
