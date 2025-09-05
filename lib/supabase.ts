@@ -1,10 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Get Supabase configuration with fallbacks for development
+const supabaseUrl = process.env.SUPABASE_URL || ''
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
+// For development, we can allow the app to start even without Supabase
+// but warn the user about missing configuration
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase configuration. Please check your environment variables.')
+  console.warn('Supabase configuration missing. Some features may not work properly.')
+  // Don't throw an error in development to allow the app to start
+  // This is a temporary workaround for development environments
 }
 
 // Create Supabase client for server-side operations

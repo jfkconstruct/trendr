@@ -37,6 +37,13 @@ export default function AnalyticsPage() {
       setLoading(true)
       setError(null)
 
+      // Check if Supabase is properly configured
+      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        setError('Supabase configuration missing. Analytics data unavailable.')
+        setLoading(false)
+        return
+      }
+
       // Fetch total counts
       const [{ count: totalReferences }, { count: totalAnalyses }, { count: totalGenerations }] = await Promise.all([
         supabaseClient.from('content_references').select('*', { count: 'exact', head: true }),
