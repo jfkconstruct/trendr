@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   AppBar, 
   Toolbar, 
@@ -43,10 +43,20 @@ interface NavigationProps {
 
 export default function Navigation({ children }: NavigationProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const pathname = usePathname()
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen)
+  }
+
+  // Prevent rendering until client-side mount to avoid hydration mismatch
+  if (!isClient) {
+    return <Box>{children}</Box>
   }
 
   const drawer = (
